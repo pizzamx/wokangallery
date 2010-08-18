@@ -1,0 +1,26 @@
+/*
+	RESET STYLE
+	@see http://developer.yahoo.com/yui/reset/
+*/
+
+body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, pre, form, fieldset, input, textarea, p, blockquote, th, td { margin: 0; padding: 0; }
+table { border-collapse: collapse; border-spacing: 0; }
+fieldset, img { border: 0; }
+address, caption, cite, code, dfn, em, th, var { font-style: normal; font-weight: normal; }
+ol, ul { list-style: none; }
+caption, th { text-align: left; }
+h1, h2, h3, h4, h5, h6 { font-size: 100%; font-weight: normal; }
+q:before, q:after { content :''; }
+abbr, acronym { border: 0; }
+
+/*
+	TAG-LEVEL STYLES
+*/
+
+body { font: 12px verdana, arial, sans-serif; }
+a { text-decoration: none; }
+a:link, a:visited, a:active { color: #006a80; }
+a:hover { color: #a8001c; }
+p {  }
+
+#fileQueue { width: 400px; height: 300px; overflow: auto; border: 1px solid #E5E5E5; margin-bottom: 10px; }
