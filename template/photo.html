@@ -1,0 +1,133 @@
+## -*- coding: utf-8 -*-
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>我看图 &gt;&gt; ${album.name}</title>
+        <link href="/assets/default.css" rel="stylesheet" type="text/css" />
+        <style type="text/css">
+            body { background: #333;  }
+            #wrapper { text-align: center; position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+            #nav, #hint { width: 50px; height: 50px; position: fixed; left: 0; bottom: 0; text-align: left; }
+            .trans_back { background: #fff; opacity: 0.3; filter: alpha(opacity=30); z-index: 5; height: 100%; }
+            #toolbar { height: 100%; width: 100px; top: 0; }
+                #toolbar a { display: block; padding: 5px 0; font-size: 30px; color: #fff; }
+            #func_bar, #toolbar { position: absolute; left: 0; }
+            #func_bar { top: 8px; width: 100%; padding-left: 100px; display: none; }
+            #nav ul { overflow: hidden; }
+            #nav li { display: inline; }
+            #desc { position: absolute; left: 0; top: 50%; padding-left: 10px; border-left: 5px solid #ccc; font-size: 16px; color: #fff; text-align: left; }
+            #loading { position: absolute; left: 50%; top: 50%; margin-left: -60px; margin-top: -40px; width: 120px; height: 80px; text-align: center; background: #fff; opacity: 0.8; filter: alpha(opacity=80); -moz-border-radius: 10px; border-radius: 10px; z-index: 50; display: none; }
+                #loading img { margin-top: 8px; }
+        </style>
+        <script type="text/javascript" src="/assets/jquery-1.3.2.min.js"></script>
+        <script type="text/javascript">
+            var ids = ${ids};
+            var photoInfo = {};
+            function switchToPhoto(id){
+                $('#loading').show();
+                $('#main_photo').attr('src', '/' + id + '/m').load(function(){
+                    /*
+                    var diff = $(document).height() - $(this).height();
+                    if(diff > 0){
+                        $(this).css('margin-top', diff / 2 + 'px');
+                    }
+                    */
+                    if(id in photoInfo){
+                        updatePhotoInfo(id, photoInfo[id]);
+                    }else{
+                        $.get('/photo/info/' + id, null, function(data){
+                            updatePhotoInfo(id, data);
+                            photoInfo[id] = data;
+                        }, "json");
+                    }
+                });
+            }
+            function updatePhotoInfo(id, info){
+                //photo.name, photo.desc, photo.time_created
+                $('#main_photo').attr('alt', info['name'])
+                $('#desc').text(info['desc']).css('width', $('#main_photo').offset().left - 10 + 'px');
+                $('#loading').hide();
+                $('li img').css('border', 'none');
+                $('#p_' + id).css('border', '4px solid #fff');
+                var loc = window.location.toString();
+                var pos = loc.lastIndexOf('/');
+                //window.location.hash = id;
+            }
+            $(document).keydown(function(e){
+                var id = parseInt($('#main_photo').attr('src').match(/.*?\/(\d+)\/\w/)[1]);
+                if(e.which == 33 || e.which == 37){ //左或向上翻页
+                    var index = jQuery.inArray(id, ids) - 1;
+                    if(index == -1){
+                        index = ids.length - 1;
+                    }
+                    switchToPhoto(ids[index]);
+                }else if(e.which == 34 || e.which == 39){   //右或向下翻页
+                    var index = jQuery.inArray(id, ids) + 1;
+                    if(index == ids.length){
+                        index = 0;
+                    }
+                    switchToPhoto(ids[index]);
+                }
+            });
+            $(document).ready(function() {
+                $('#nav').mouseenter(function(e) {
+                    $('#hint').hide();
+                    $('#nav').animate({'height': '144px', 'width': '100%'}, 100, function(){
+                        $('#func_bar').show();
+                    });
+                    $('li img').each(function(){
+                        if($(this).attr('_src')){
+                            $(this).attr('src', $(this).attr('_src'))
+                            $(this).removeAttr('_src');
+                        }
+                    });
+                }).mouseleave(function() {
+                    $('#nav').animate({'height': '50px', 'width': '50px'}, 100, function(){
+                        $('#func_bar').hide();
+                        $('#hint').show();
+                    });
+                });
+                /*
+                $('#nav').mouseenter(function(){
+                    if($('ul').is(":visible")){
+                    }else{
+                    }
+                });
+                */
+            	$('#nav li a').click(function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var id = this.href.substr(this.href.indexOf('#') + 1)
+                    switchToPhoto(id);
+                });
+                var id = window.location.hash.substr(1);
+                switchToPhoto(id);
+            });
+        </script>
+    </head>
+    <body>
+        <div id="loading"><img src="/assets/loading.gif" alt="?" /></div>
+        <div id="wrapper">
+            <div id="desc"></div>
+            <img id="main_photo" src="" alt="" />
+            <div id="hint"><img src="/assets/sign.gif" alt="鼠标移过来嘛" /></div>
+            <div id="nav">
+                <div class="trans_back"></div>
+                <div id="func_bar">
+                    <div id="toolbar">
+                        <a href="/album/${album.name}">回相册</a>
+                        <a href="/">回首页</a></p>
+                    </div>
+                    <ul>
+                    %for sib in album.photo_set:
+                        <li><a href="/photo/${album.name}#${sib.key().id()}">
+                            <img id="p_${sib.key().id()}" _src="/thumb/${sib.thumb.key().id()}" alt="${sib.name}" />
+                        </a></li>
+                    %endfor
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

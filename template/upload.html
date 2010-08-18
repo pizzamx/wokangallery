@@ -1,0 +1,55 @@
+## -*- coding: utf-8 -*-
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>我看图 &gt;&gt; 上传</title>
+<link href="/assets/default.css" rel="stylesheet" type="text/css" />
+<link href="/assets/uploadify.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="/assets/jquery-1.3.2.min.js"></script>
+<script type="text/javascript" src="/assets/swfobject.js"></script>
+<script type="text/javascript" src="/assets/jquery.uploadify.v2.1.0.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+    	$("#uploadify").uploadify({
+    		'uploader'    : '/assets/uploadify.swf',
+    		'script'      : '/admin/upload',
+    		'cancelImg'   : '/assets/cancel.png',
+    		'auto'        : true,
+    		'multi'       : true,
+            'onSelectOnce': function(){
+                $(this).uploadifySettings('folder', $('#album').val())
+            },
+            'onComplete'  : function(e, qid, fileObj, resp, data){
+                var src = '/' + resp + '/t';
+                $('#trf').before('<tr id="tr_' + resp + '"><td><img src="' + src + '" /></td><td><textarea></textarea></td></tr>');        
+            }
+    	});
+    });
+    function updateDesc(){
+        $('tr').css('background', '#fff');
+        var map = {};
+        $('tr[id^=tr_]').each(function(){
+            var k = this.id.substring(this.id.indexOf('_') + 1);
+            var v =  $(this).children('td').children('textarea').val();
+            map[k] = v;
+        });
+        $.post('/admin/edit/desc', map, function(data){
+            var ids = data.split(' ');
+            for(var i = 0; i < ids.length; i++){
+                $('#tr_' + ids[i]).css('background', '#F5FAFE');
+            }
+        }, "text");
+    }
+</script>
+</head>
+
+<body>
+    <p><label for="album">哪个相册？</label><input type="text" name="album" id="album" /></p>
+    <input type="file" name="uploadify" id="uploadify" />
+    <p><a href="/">回首页</a></p>
+    <div>
+        <table><tr id="trf"><td colspan="2"><button onclick="updateDesc()">修改描述</button></td></tr></table>
+    </div>
+</body>
+</html>
