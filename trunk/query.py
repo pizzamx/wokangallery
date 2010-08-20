@@ -19,8 +19,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from google.appengine.ext import webapp, db
+from google.appengine.ext import webapp, db, blobstore
 from google.appengine.api import users, images
+from google.appengine.ext.webapp import blobstore_handlers
 
 from mako.template import Template
 from mako.lookup import TemplateLookup
@@ -138,15 +139,32 @@ class ServePhoto(webapp.RequestHandler):
             self.response.headers['Date'] = datetime.now().strftime(FMT)
             self.response.out.write(stream)
 
+class GeneratePhotoURL(webapp.RequestHandler):
+    def get(self, key):
+        self.response.out.write(key)
+
 class DispPhoto(QueryBase):
     def get(self, an):
         album = Album.get_by_key_name('_' + urllib2.unquote(an).decode('utf-8'))
         #p = Photo.get_by_id(long(id))
         if album:
-            ids = [int(p.key().id()) for p in album.photo_set]
+            ids = []
+            urls = []
+            for p in album.photo_set:
+                ids.append(int(p.key().id()))
+                urls.append(p.genURL())
             template = self.getTemplate('photo.html')
-            self.response.out.write(template.render_unicode(album=album, ids=ids, isAdmin=users.is_current_user_admin()))
+            self.response.out.write(template.render_unicode(album=album, ids=ids, urls=urls, isAdmin=users.is_current_user_admin()))
             
+class Dummy(webapp.RequestHandler):
+    def get(self, anything):
+        self.response.out.write(anything)
+        
+class makeURL(blobstore_handlers.BlobstoreUploadHandler):
+    def get(self):
+        url = blobstore.create_upload_url('/admin/api/upload')
+        self.response.out.write(url)
+
 class GetPhotoInfo(webapp.RequestHandler):
     def get(self, id):
         p = Photo.get_by_id(long(id))
