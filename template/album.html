@@ -6,9 +6,9 @@
         <title>我看图 &gt;&gt; ${album.name} </title>
         <link href="/assets/default.css" rel="stylesheet" type="text/css" />
         <style type="text/css">
-            #album_list li { float: left; margin-left: 15px; line-height: normal; position: relative; height: 160px; }
-                #album_list li p { line-height:normal; position:relative; overflow: hidden; width:128px; height: 14px; top: -14px; color: #ddd; z-index: 10; }
-                #album_list .transbar { position:absolute; top: 114px; left: 0; width:128px; height: 14px; background: #000; opacity: 0.5; filter: alpha(opacity=50); z-index: 5; }
+            #album_list li { float: left; margin-left: 15px; line-height: normal; position: relative; height: 136px; }
+                #album_list li p { line-height:normal; position:relative; overflow: hidden; width:104px; height: 14px; top: -14px; color: #ddd; z-index: 10; }
+                #album_list .transbar { position:absolute; top: 90px; left: 0; width:104px; height: 14px; background: #000; opacity: 0.5; filter: alpha(opacity=50); z-index: 5; }
             #album_list img { vertical-align: middle; }
             #album_nav { height: 100px; }
             #album_name { position: absolute; left: 0; top: 0; z-index: -1; color: #ddd; font: 120px "Microsoft YaHei", "黑体"; }
@@ -33,7 +33,7 @@
         <div id="album_list">
             <ul>
             %for p in album.photo_set.order('__key__'):
-                <li><a href="/photo/${album.name}#${p.key().id()}"><img src="/thumb/${p.thumb.key().id()}" alt="${p.name}" /></a>
+                <li><a href="/photo/${album.name}#${p.key().id()}"><img src="${p.genThumbURL()}" alt="${p.name}" /></a>
                 <div class="transbar"></div>
                 <p>${p.desc or ""}</p></li>
             %endfor

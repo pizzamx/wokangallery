@@ -28,8 +28,11 @@ import query, update
 def main():
     application = webapp.WSGIApplication([
         (r'/', query.Index),
+        (r'/_dummy/(.*)', query.Dummy),
+        (r'/upload', update.Upload),
         (r'/thumb/(.*)', query.DispThumbnail),
         (r'/photo/info/(.*)', query.GetPhotoInfo),
+        (r'/photo/url/(.*)', query.GeneratePhotoURL),
         (r'/photo/(.*)', query.DispPhoto),
         (r'/album/(.*)', query.ListAlbum),
         (r'/(\d+)/([tsmlf])/?', query.ServePhoto)

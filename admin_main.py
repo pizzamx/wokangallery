@@ -28,6 +28,7 @@ import update, query
 def main():
     application = webapp.WSGIApplication([
         (r'/admin/upload', update.Upload),
+        (r'/admin/api/makeUploadURL', query.makeURL),
         (r'/admin/api/upload', update.APIUpload),
         (r'/admin/api/listAlbums', query.ListAlbums),
         (r'/admin/edit/desc', update.EditDesc)

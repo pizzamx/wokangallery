@@ -19,7 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from google.appengine.ext import db
+from google.appengine.ext import db, blobstore
+from google.appengine.api import images
 
 from datetime import tzinfo, timedelta, datetime
 
@@ -30,29 +31,25 @@ class Thumbnail(db.Model):
     data      = db.BlobProperty()     
 
 class Album(db.Model):
-    name    = db.StringProperty()
-    desc    = db.TextProperty()
-    cover   = db.ReferenceProperty(Thumbnail)
-    cr_time = db.DateTimeProperty(auto_now_add=True)
+    name     = db.StringProperty()
+    desc     = db.TextProperty()
+    cover    = blobstore.BlobReferenceProperty()
+    cr_time  = db.DateTimeProperty(auto_now_add=True)
+    
+    def genURL(self):
+        return images.get_serving_url(str(self.cover.key()), size=144, crop=True)
 
 class Photo(db.Model):
     src     = db.StringProperty()                     #保留字段，来自网络的图片才赋值
     name    = db.StringProperty()                     #文件名
-    desc   = db.StringProperty()                      #标题
-    data    = db.BlobProperty()     
-    thumb   = db.ReferenceProperty(Thumbnail)         #缩略图
+    desc    = db.StringProperty()                      #标题
+    blob    = blobstore.BlobReferenceProperty()     
+    #thumb   = db.ReferenceProperty(Thumbnail)         #缩略图
     cr_time = db.DateTimeProperty(auto_now_add=True)  #创建时间
     album   = db.ReferenceProperty(Album)             #所属相册
     
-    def fetch(self):
-        try:
-            stream = urllib2.urlopen(self.src)
-            self.data = db.Blob(stream.read())
-            stream.close()
-            self.put()
-            return True
-        except:
-            logging.error('Image fetch failed: ' + self.src)
-            return False
-    
-    
+    def genThumbURL(self):
+        return images.get_serving_url(str(self.blob.key()), size=104, crop=True)
+
+    def genURL(self):
+        return images.get_serving_url(str(self.blob.key()), size=912)

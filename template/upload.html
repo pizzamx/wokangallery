@@ -13,7 +13,7 @@
     $(document).ready(function() {
     	$("#uploadify").uploadify({
     		'uploader'    : '/assets/uploadify.swf',
-    		'script'      : '/admin/upload',
+    		'script'      : '${url}',
     		'cancelImg'   : '/assets/cancel.png',
     		'auto'        : true,
     		'multi'       : true,
@@ -21,7 +21,7 @@
                 $(this).uploadifySettings('folder', $('#album').val())
             },
             'onComplete'  : function(e, qid, fileObj, resp, data){
-                var src = '/' + resp + '/t';
+                var src = '/photo/url/' + resp + '/t';
                 $('#trf').before('<tr id="tr_' + resp + '"><td><img src="' + src + '" /></td><td><textarea></textarea></td></tr>');        
             }
     	});

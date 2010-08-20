@@ -23,10 +23,13 @@
         <script type="text/javascript" src="/assets/jquery-1.3.2.min.js"></script>
         <script type="text/javascript">
             var ids = ${ids};
+            var urls = ${urls};
             var photoInfo = {};
+            var currentId;
             function switchToPhoto(id){
                 $('#loading').show();
-                $('#main_photo').attr('src', '/' + id + '/m').load(function(){
+                var url = urls[jQuery.inArray(parseInt(id), ids)];
+                $('#main_photo').attr('src', url).load(function(){
                     /*
                     var diff = $(document).height() - $(this).height();
                     if(diff > 0){
@@ -42,38 +45,40 @@
                         }, "json");
                     }
                 });
+                currentId = id;
             }
             function updatePhotoInfo(id, info){
                 //photo.name, photo.desc, photo.time_created
                 $('#main_photo').attr('alt', info['name'])
-                $('#desc').text(info['desc']).css('width', $('#main_photo').offset().left - 10 + 'px');
+                $('#desc').text(info['desc'] || '').css('width', $('#main_photo').offset().left - 10 + 'px');
                 $('#loading').hide();
                 $('li img').css('border', 'none');
                 $('#p_' + id).css('border', '4px solid #fff');
                 var loc = window.location.toString();
                 var pos = loc.lastIndexOf('/');
-                //window.location.hash = id;
+                window.location.hash = id;
             }
             $(document).keydown(function(e){
-                var id = parseInt($('#main_photo').attr('src').match(/.*?\/(\d+)\/\w/)[1]);
-                if(e.which == 33 || e.which == 37){ //左或向上翻页
-                    var index = jQuery.inArray(id, ids) - 1;
-                    if(index == -1){
-                        index = ids.length - 1;
+                if(currentId){
+                    if(e.which == 33 || e.which == 37){ //左或向上翻页
+                        var index = jQuery.inArray(currentId, ids) - 1;
+                        if(index == -1){
+                            index = ids.length - 1;
+                        }
+                        switchToPhoto(ids[index]);
+                    }else if(e.which == 34 || e.which == 39){   //右或向下翻页
+                        var index = jQuery.inArray(currentId, ids) + 1;
+                        if(index == ids.length){
+                            index = 0;
+                        }
+                        switchToPhoto(ids[index]);
                     }
-                    switchToPhoto(ids[index]);
-                }else if(e.which == 34 || e.which == 39){   //右或向下翻页
-                    var index = jQuery.inArray(id, ids) + 1;
-                    if(index == ids.length){
-                        index = 0;
-                    }
-                    switchToPhoto(ids[index]);
                 }
             });
             $(document).ready(function() {
                 $('#nav').mouseenter(function(e) {
                     $('#hint').hide();
-                    $('#nav').animate({'height': '144px', 'width': '100%'}, 100, function(){
+                    $('#nav').animate({'height': '124px', 'width': '100%'}, 100, function(){
                         $('#func_bar').show();
                     });
                     $('li img').each(function(){
@@ -107,7 +112,7 @@
         </script>
     </head>
     <body>
-        <div id="loading"><img src="/assets/loading.gif" alt="?" /></div>
+        <div id="loading"><img src="/assets/loading.gif" alt="Loading..." /></div>
         <div id="wrapper">
             <div id="desc"></div>
             <img id="main_photo" src="" alt="" />
@@ -122,7 +127,7 @@
                     <ul>
                     %for sib in album.photo_set:
                         <li><a href="/photo/${album.name}#${sib.key().id()}">
-                            <img id="p_${sib.key().id()}" _src="/thumb/${sib.thumb.key().id()}" alt="${sib.name}" />
+                            <img id="p_${sib.key().id()}" _src="${sib.genThumbURL()}" alt="${sib.name}" />
                         </a></li>
                     %endfor
                     </ul>

@@ -36,7 +36,7 @@
         %for album in aas:
             <li>
                 <a href="/album/${album.name}">
-                    <img alt="相册“${album.name}”的封面" src="/thumb/${album.cover.key().id()}"/>
+                    <img alt="相册“${album.name}”的封面" src="${album.genURL()}"/>
                     <p>${album.name}<br/>${album.photo_set.count()}张</p>
                 </a>
             </li>
