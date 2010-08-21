@@ -30,7 +30,7 @@ from django.utils import simplejson
 
 from model import Photo, Album, Thumbnail
 
-import os, logging, urllib2, math, calendar, re, string
+import os, logging, urllib2, math, calendar, re, string, base64
 
 from datetime import tzinfo, timedelta, datetime, date
 
@@ -81,7 +81,7 @@ class Index(QueryBase):
         
 class ListAlbum(QueryBase):
     def get(self, k):
-        album = Album.get_by_key_name('_' + urllib2.unquote(k).decode('utf-8'))
+        album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(k).decode('utf-8')))
         template = self.getTemplate('album.html')
         self.response.out.write(template.render_unicode(album=album, isAdmin=users.is_current_user_admin()))
         
@@ -145,16 +145,22 @@ class GeneratePhotoURL(webapp.RequestHandler):
 
 class DispPhoto(QueryBase):
     def get(self, an):
-        album = Album.get_by_key_name('_' + urllib2.unquote(an).decode('utf-8'))
+        album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(an).decode('utf-8')))
         #p = Photo.get_by_id(long(id))
         if album:
             ids = []
             urls = []
+            info = {}
             for p in album.photo_set:
                 ids.append(int(p.key().id()))
                 urls.append(p.genURL())
+                info[str(p.key().id())] = {
+                    'name': str(p.name),
+                    'desc': p.desc,
+                    'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
+                }
             template = self.getTemplate('photo.html')
-            self.response.out.write(template.render_unicode(album=album, ids=ids, urls=urls, isAdmin=users.is_current_user_admin()))
+            self.response.out.write(template.render_unicode(album=album, ids=ids, urls=urls, info=simplejson.dumps(info), isAdmin=users.is_current_user_admin()))
             
 class Dummy(webapp.RequestHandler):
     def get(self, anything):

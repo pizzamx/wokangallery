@@ -72,18 +72,20 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
 
         name = self.request.get('Filename')
         abn = self.request.get('album')
+        albm = unicode(base64.b64decode(abn), 'utf-8')
         desc = self.request.get('desc')
-        abn = unicode(base64.b64decode(abn), 'utf-8')
+        desc = unicode(base64.b64decode(desc), 'utf-8')
         
         gImg = images.Image(blob_info.key())
 
         album = Album.get_by_key_name('_' + abn)
         if not album:
-            album = Album(name=abn, cover=blob_info.key(), key_name='_' + abn)
+            album = Album(name=albm, cover=blob_info.key(), key_name='_' + abn)
             album.put()
         
-        p = Photo(src='', name=name, blob=blob_info.key(), album=album)
+        p = Photo(src='', name=name, blob=blob_info.key(), desc=desc, album=album)
         p.put()
+        
         self.redirect('/_dummy/%s' % blob_info.key())
 
 class EditDesc(webapp.RequestHandler):

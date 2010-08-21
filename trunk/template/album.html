@@ -15,13 +15,18 @@
             #album_homelink { position: absolute; right: 30px; top: 25px; }
                 #album_homelink a { font-size: 14px; }
         </style>
-        <script type="text/javascript" src="/assets/jquery-1.3.2.min.js"></script>
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
         <script type="text/javascript">
         $(document).ready(function() {
         	$("#album_list li").mouseenter(function(){
                 $(this).children('p').css({'overflow': 'visible', 'background': '#000', 'height': 'auto'});
         	}).mouseleave(function(){
                 $(this).children('p').css({'overflow': 'hidden', 'background': 'none', 'height': '14px'});
+            });
+            $("#album_list li p").each(function(){
+                if($(this).text() == ''){
+                    $(this).prev().hide();
+                }
             });
         });
         </script>
