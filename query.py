@@ -18,15 +18,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+import webapp2
 
-from google.appengine.ext import webapp, db, blobstore
+from google.appengine.ext import db, blobstore
 from google.appengine.api import users, images
 from google.appengine.ext.webapp import blobstore_handlers
 
 from mako.template import Template
 from mako.lookup import TemplateLookup
 
-from django.utils import simplejson
+import simplejson
 
 from model import Photo, Album, Thumbnail
 
@@ -34,8 +35,9 @@ import os, logging, urllib2, math, calendar, re, string, base64
 
 from datetime import tzinfo, timedelta, datetime, date
 
-class QueryBase(webapp.RequestHandler):
-    def __init__(self):
+class QueryBase(webapp2.RequestHandler):
+    def __init__(self, request=None, response=None):
+        super(QueryBase, self).__init__(request=request, response=response)
         #页面标题
         self.title = ''
         
@@ -56,7 +58,7 @@ class QueryBase(webapp.RequestHandler):
 
         #输出
         template = self.getTemplate(tplName)
-        self.response.out.write(template.render_unicode(baseUrl=baseUrl, redirectUrl=url, posts=posts, isAdmin=users.is_current_user_admin(), calendar=widget.Calendar(path), 
+        self.response.write(template.render_unicode(baseUrl=baseUrl, redirectUrl=url, posts=posts, isAdmin=users.is_current_user_admin(), calendar=widget.Calendar(path), 
                                                         widgets=[widget.BlogUpdates(), widget.RecentComment(), widget.TagCloud()],
                                                         pageCount=pageCount, currentPage=pageOffset, pagePath=path, title = self.title))
     
@@ -71,21 +73,21 @@ class QueryBase(webapp.RequestHandler):
         template = self.getTemplate('404.html')
         self.response.set_status(404)
         logging.info('Invalid request: %s' % self.request.path)
-        self.response.out.write(template.render_unicode(title = u'出错啦', uri=self.request.path))
+        self.response.write(template.render_unicode(title = u'出错啦', uri=self.request.path))
 
 class Index(QueryBase):
     def get(self):
         allAlbums = Album.all()
         template = self.getTemplate('index.html')
-        self.response.out.write(template.render_unicode(aas=allAlbums, isAdmin=users.is_current_user_admin()))
+        self.response.write(template.render_unicode(aas=allAlbums, isAdmin=users.is_current_user_admin()))
         
 class ListAlbum(QueryBase):
     def get(self, k):
-        album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(k).decode('utf-8')))
+        album = Album.get_by_key_name('_' + urllib2.unquote(k).decode('utf-8'))
         template = self.getTemplate('album.html')
-        self.response.out.write(template.render_unicode(album=album, isAdmin=users.is_current_user_admin()))
+        self.response.write(template.render_unicode(album=album, isAdmin=users.is_current_user_admin()))
         
-class DispThumbnail(webapp.RequestHandler):
+class DispThumbnail(webapp2.RequestHandler):
     def get(self, id):
         hkeys = self.request.headers.keys()
         """
@@ -98,9 +100,9 @@ class DispThumbnail(webapp.RequestHandler):
         if t:
             name = t.name
             self.response.headers['Content-Type'] = str('image/%s' % name[name.rfind('.') + 1:])
-            self.response.out.write(t.data)
+            self.response.write(t.data)
             
-class ServePhoto(webapp.RequestHandler):
+class ServePhoto(webapp2.RequestHandler):
     def get(self, id, size):
         #size = (t)iny, (s)mall, (m)edium, (l)arge, (f)ull
         p = Photo.get_by_id(long(id))
@@ -137,22 +139,23 @@ class ServePhoto(webapp.RequestHandler):
             self.response.headers['Expires'] = (datetime.now() + timedelta(days=365)).strftime(FMT)
             self.response.headers['Cache-Control']  = 'public, max-age=315360000'
             self.response.headers['Date'] = datetime.now().strftime(FMT)
-            self.response.out.write(stream)
+            self.response.write(stream)
 
-class GeneratePhotoURL(webapp.RequestHandler):
+class GeneratePhotoURL(webapp2.RequestHandler):
     def get(self, key):
-        self.response.out.write(key)
+        self.response.write(key)
 
 class DispPhoto(QueryBase):
     def get(self, an):
-        album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(an).decode('utf-8')))
+        album = Album.get_by_key_name('_' + urllib2.unquote(an).decode('utf-8'))
+        #album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(an).decode('utf-8')))
         #p = Photo.get_by_id(long(id))
         if album:
             ids = []
             urls = []
             info = {}
             for p in album.photo_set:
-                ids.append(int(p.key().id()))
+                ids.append(str(p.key().id()))
                 urls.append(p.genURL())
                 info[str(p.key().id())] = {
                     'name': str(p.name),
@@ -160,28 +163,28 @@ class DispPhoto(QueryBase):
                     'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
                 }
             template = self.getTemplate('photo.html')
-            self.response.out.write(template.render_unicode(album=album, ids=ids, urls=urls, info=simplejson.dumps(info), isAdmin=users.is_current_user_admin()))
+            self.response.write(template.render_unicode(album=album, ids=ids, urls=urls, info=simplejson.dumps(info), isAdmin=users.is_current_user_admin()))
             
-class Dummy(webapp.RequestHandler):
+class Dummy(webapp2.RequestHandler):
     def get(self, anything):
-        self.response.out.write(anything)
+        self.response.write(anything)
         
 class makeURL(blobstore_handlers.BlobstoreUploadHandler):
     def get(self):
         url = blobstore.create_upload_url('/admin/api/upload')
-        self.response.out.write(url)
+        self.response.write(url)
 
-class GetPhotoInfo(webapp.RequestHandler):
+class GetPhotoInfo(webapp2.RequestHandler):
     def get(self, id):
         p = Photo.get_by_id(long(id))
         if p:
-            self.response.out.write(simplejson.dumps({
+            self.response.write(simplejson.dumps({
                 'name': p.name,
                 'desc': p.desc,
                 'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
             }, ensure_ascii=False))
 
-class ListAlbums(webapp.RequestHandler):
+class ListAlbums(webapp2.RequestHandler):
     def get(self):
         albums = []
         for album in Album.all():
@@ -190,4 +193,4 @@ class ListAlbums(webapp.RequestHandler):
                 'count': album.photo_set.count(),
                 'crTime': album.cr_time.strftime('%Y-%m-%d- %H:%M:%S')
             })
-        self.response.out.write(simplejson.dumps(albums))
+        self.response.write(simplejson.dumps(albums))

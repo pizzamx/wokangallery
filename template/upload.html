@@ -1,55 +1,162 @@
 ## -*- coding: utf-8 -*-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>我看图 &gt;&gt; 上传</title>
-<link href="/assets/default.css" rel="stylesheet" type="text/css" />
-<link href="/assets/uploadify.css" rel="stylesheet" type="text/css" />
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-<script type="text/javascript" src="/assets/swfobject.js"></script>
-<script type="text/javascript" src="/assets/jquery.uploadify.v2.1.0.min.js"></script>
-<script type="text/javascript">
-    $(document).ready(function() {
-    	$("#uploadify").uploadify({
-    		'uploader'    : '/assets/uploadify.swf',
-    		'script'      : '${url}',
-    		'cancelImg'   : '/assets/cancel.png',
-    		'auto'        : true,
-    		'multi'       : true,
-            'onSelectOnce': function(){
-                $(this).uploadifySettings('folder', $('#album').val())
-            },
-            'onComplete'  : function(e, qid, fileObj, resp, data){
-                var src = '/photo/url/' + resp + '/t';
-                $('#trf').before('<tr id="tr_' + resp + '"><td><img src="' + src + '" /></td><td><textarea></textarea></td></tr>');        
-            }
-    	});
-    });
-    function updateDesc(){
-        $('tr').css('background', '#fff');
-        var map = {};
-        $('tr[id^=tr_]').each(function(){
-            var k = this.id.substring(this.id.indexOf('_') + 1);
-            var v =  $(this).children('td').children('textarea').val();
-            map[k] = v;
-        });
-        $.post('/admin/edit/desc', map, function(data){
-            var ids = data.split(' ');
-            for(var i = 0; i < ids.length; i++){
-                $('#tr_' + ids[i]).css('background', '#F5FAFE');
-            }
-        }, "text");
-    }
-</script>
-</head>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>我看图 &gt;&gt; 上传</title>
+        
+        <!--[if lt IE 9]>
+          <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+        <link href="/assets/default.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" href="/assets/css/styles.css" />
+        <script type="text/javascript" src="/assets/jquery-1.9.1.min.js"></script>
+		<script type="text/javascript" src="assets/js/jquery.filedrop.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                /*
+            	$("#uploadify").uploadify({
+            		'uploader'    : '/assets/uploadify.swf',
+            		'script'      : '${url}',
+            		'cancelImg'   : '/assets/cancel.png',
+            		'auto'        : true,
+            		'multi'       : true,
+                    'onSelectOnce': function(){
+                        $(this).uploadifySettings('folder', $('#album').val())
+                    },
+                    'onComplete'  : function(e, qid, fileObj, resp, data){
+                        var src = '/photo/url/' + resp + '/t';
+                        $('#trf').before('<tr id="tr_' + resp + '"><td><img src="' + src + '" /></td><td><textarea></textarea></td></tr>');        
+                    }
+            	});
+                */
 
-<body>
-    <p><label for="album">哪个相册？</label><input type="text" name="album" id="album" /></p>
-    <input type="file" name="uploadify" id="uploadify" />
-    <p><a href="/">回首页</a></p>
-    <div>
-        <table><tr id="trf"><td colspan="2"><button onclick="updateDesc()">修改描述</button></td></tr></table>
-    </div>
-</body>
+            	var dropbox = $('#dropbox'), message = $('.message', dropbox);
+            	
+            	dropbox.filedrop({
+            		// The name of the $_FILES entry:
+            		paramname:'Filedata',
+            		maxfiles: 5,
+                	maxfilesize: 2,
+            		url: '${url}',
+            		uploadFinished:function(i, file, resp){
+            			$.data(file).addClass('done');
+                        var src = resp['thumbUrl'];
+                        $('#trf').before('<tr id="tr_' + resp['id'] + '"><td><img src="' + src + '" /></td><td><textarea></textarea></td></tr>');        
+            		},
+            		
+                	error: function(err, file) {
+            			switch(err) {
+            				case 'BrowserNotSupported':
+            					showMessage('Your browser does not support HTML5 file uploads!');
+            					break;
+            				case 'TooManyFiles':
+            					alert('Too many files! Please select 5 at most! (configurable)');
+            					break;
+            				case 'FileTooLarge':
+            					alert(file.name+' is too large! Please upload files up to 2mb (configurable).');
+            					break;
+            				default:
+            					break;
+            			}
+            		},
+            		
+            		// Called before each upload is started
+            		beforeEach: function(file){
+            			if(!file.type.match(/^image\//)){
+            				alert('Only images are allowed!');
+            				
+            				// Returning false will cause the
+            				// file to be rejected
+            				return false;
+            			}
+                		this.data['folder'] = $('#album').val();
+            		},
+            		
+            		uploadStarted:function(i, file, len){
+            			createImage(file);
+            		},
+            		
+            		progressUpdated: function(i, file, progress) {
+            			$.data(file).find('.progress').width(progress);
+            		}
+                	 
+            	});
+            	var template = '<div class="preview">'+
+            						'<span class="imageHolder">'+
+            							'<img />'+
+            							'<span class="uploaded"></span>'+
+            						'</span>'+
+            						'<div class="progressHolder">'+
+            							'<div class="progress"></div>'+
+            						'</div>'+
+            					'</div>'; 
+                	
+            	function createImage(file){
+            		var preview = $(template), 
+            			image = $('img', preview);
+            			
+            		var reader = new FileReader();
+            		
+            		image.width = 100;
+            		image.height = 100;
+            		
+            		reader.onload = function(e){
+            			
+            			// e.target.result holds the DataURL which
+            			// can be used as a source of the image:
+            			
+            			image.attr('src',e.target.result);
+            		};
+            		
+            		// Reading the file as a DataURL. When finished,
+            		// this will trigger the onload function above:
+            		reader.readAsDataURL(file);
+            		
+            		message.hide();
+            		preview.appendTo(dropbox);
+            		
+            		// Associating a preview container
+            		// with the file, using jQuery's $.data():
+            		
+            		$.data(file,preview);
+            	}
+                
+            	function showMessage(msg){
+            		message.html(msg);
+            	}
+        	});
+            
+
+            function updateDesc(){
+                $('tr').css('background', '#fff');
+                var map = {};
+                $('tr[id^=tr_]').each(function(){
+                    var k = this.id.substring(this.id.indexOf('_') + 1);
+                    var v =  $(this).children('td').children('textarea').val();
+                    map[k] = v;
+                });
+                $.post('/admin/edit/desc', map, function(data){
+                    var ids = data.split(' ');
+                    for(var i = 0; i < ids.length; i++){
+                        var exp = '#tr_' + ids[i] + ' textarea'
+                        $(exp).css('background', '#35FAFE');
+                    }
+                }, "text");
+            }
+        </script>
+    </head>
+    
+    <body>
+        <p><label for="album">哪个相册？</label><input type="text" name="album" id="album" /></p><br/><br/><br/><br/>
+        <!--input type="file" name="uploadify" id="uploadify" /-->
+        <p><a href="/">回首页</a></p>
+        <div>
+            <table><tr id="trf"><td colspan="2"><button onclick="updateDesc()">修改描述</button></td></tr></table>
+        </div>
+		<div id="dropbox">
+			<span class="message">拖动图片到此上传。</span>
+		</div>
+    
+    </body>
 </html>

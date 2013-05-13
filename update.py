@@ -18,6 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+import webapp2
 
 from google.appengine.ext import webapp, db, blobstore
 from google.appengine.api import users, images
@@ -29,7 +30,7 @@ from mako.lookup import TemplateLookup
 from model import Photo, Album, Thumbnail
 from util import adminOP
 
-import os, logging, urllib2, math, calendar, re, string, base64
+import os, logging, urllib2, math, calendar, re, string, base64, urllib
 
 from datetime import tzinfo, timedelta, datetime, date
 
@@ -41,10 +42,11 @@ class UpdateBase(object):
         return mylookup.get_template(name)
         
 class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
+    @adminOP
     def get(self):
         template = self.getTemplate('upload.html')
         url = blobstore.create_upload_url('/upload')
-        self.response.out.write(template.render_unicode(url=url))
+        self.response.write(template.render_unicode(url=url))
         
     def post(self):
         upload_files = self.get_uploads('Filedata')
@@ -52,6 +54,7 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
 
         name = self.request.get('Filename')
         folder = self.request.get('folder')
+        folder = urllib.unquote(folder.encode('utf-8')).decode("utf-8")
         abn = folder[folder.rfind('/') + 1:]
         
         gImg = images.Image(blob_info.key())
@@ -63,7 +66,9 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
         
         p = Photo(src='', name=name, blob=blob_info.key(), album=album)
         p.put()
-        self.redirect('/_dummy/%s' % blob_info.key())
+        self.response.set_status(200)
+        self.response.write({"thumbUrl": p.genThumbURL(), "id": str(p.key().id())})
+        #self.redirect('/_dummy/xxx' % blob_info.key())
 
 class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
     def post(self):
@@ -88,17 +93,16 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
         
         self.redirect('/_dummy/%s' % blob_info.key())
 
-class EditDesc(webapp.RequestHandler):
+class EditDesc(webapp2.RequestHandler):
     @adminOP
     def post(self):
         keys = self.request.arguments()
         result = []
         for k in keys:
             v = self.request.get(k)
-            logging.info((k, v))
-            p = Photo.get_by_id(long(k))
+            p = Photo.get_by_id(int(k))
             if p:
                 p.desc = v
                 p.put()
                 result.append(k)
-        self.response.out.write(string.join(result) if len(result) else '')
+        self.response.write(string.join(result) if len(result) else '')
