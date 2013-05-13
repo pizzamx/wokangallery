@@ -20,24 +20,18 @@
 # THE SOFTWARE.
 
 import wsgiref.handlers
-
-from google.appengine.ext import webapp
+import webapp2
 
 import query, update
 
-def main():
-    application = webapp.WSGIApplication([
-        (r'/', query.Index),
-        (r'/_dummy/(.*)', query.Dummy),
-        (r'/upload', update.Upload),
-        (r'/thumb/(.*)', query.DispThumbnail),
-        (r'/photo/info/(.*)', query.GetPhotoInfo),
-        (r'/photo/url/(.*)', query.GeneratePhotoURL),
-        (r'/photo/(.*)', query.DispPhoto),
-        (r'/album/(.*)', query.ListAlbum),
-        (r'/(\d+)/([tsmlf])/?', query.ServePhoto)
-    ], debug=True)
-    wsgiref.handlers.CGIHandler().run(application)
-
-if __name__ == '__main__':
-    main()
+application = webapp2.WSGIApplication([
+    (r'/', query.Index),
+    (r'/_dummy/(.*)', query.Dummy),
+    (r'/upload', update.Upload),
+    (r'/thumb/(.*)', query.DispThumbnail),
+    (r'/photo/info/(.*)', query.GetPhotoInfo),
+    (r'/photo/url/(.*)', query.GeneratePhotoURL),
+    (r'/photo/(.*)', query.DispPhoto),
+    (r'/album/(.*)', query.ListAlbum),
+    (r'/(\d+)/([tsmlf])/?', query.ServePhoto)
+], debug=True)

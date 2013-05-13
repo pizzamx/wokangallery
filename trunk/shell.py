@@ -179,7 +179,7 @@ class Session(db.Model):
       self.unpicklable_names.remove(name)
 
 
-class FrontPageHandler(webapp.RequestHandler):
+class FrontPageHandler(webapp2.RequestHandler):
   """Creates a new session and renders the shell.html template.
   """
 
@@ -205,10 +205,10 @@ class FrontPageHandler(webapp.RequestHandler):
              'logout_url': users.create_logout_url(session_url),
              }
     rendered = webapp.template.render(template_file, vars, debug=_DEBUG)
-    self.response.out.write(rendered)
+    self.response.write(rendered)
 
 
-class StatementHandler(webapp.RequestHandler):
+class StatementHandler(webapp2.RequestHandler):
   """Evaluates a python statement in a given session and returns the result.
   """
 
@@ -232,7 +232,7 @@ class StatementHandler(webapp.RequestHandler):
       logging.info('Compiling and evaluating:\n%s' % statement)
       compiled = compile(statement, '<string>', 'single')
     except:
-      self.response.out.write(traceback.format_exc())
+      self.response.write(traceback.format_exc())
       return
 
     # create a dedicated module to be used as this statement's __main__
@@ -264,7 +264,7 @@ class StatementHandler(webapp.RequestHandler):
           statement_module.__dict__[name] = val
         except:
           msg = 'Dropping %s since it could not be unpickled.\n' % name
-          self.response.out.write(msg)
+          self.response.write(msg)
           logging.warning(msg + traceback.format_exc())
           session.remove_global(name)
 
@@ -281,7 +281,7 @@ class StatementHandler(webapp.RequestHandler):
           sys.stdout = old_stdout
           sys.stderr = old_stderr
       except:
-        self.response.out.write(traceback.format_exc())
+        self.response.write(traceback.format_exc())
         return
 
       # extract the new globals that this statement added

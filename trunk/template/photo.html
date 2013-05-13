@@ -38,7 +38,8 @@
                 $('#loading').show();
                 var index = jQuery.inArray(id, ids);
                 var url = urls[index];
-                $('#main_photo').attr('src', url).load(function(){
+                $('#main_photo').attr('src', url);
+                $('#main_photo').load(function(){
                     var diff = $(document).height() - $(this).height();
                     if(diff > 0){
                         $(this).css('margin-top', diff / 2 + 'px');
@@ -126,7 +127,7 @@
                     var id = this.href.substr(this.href.indexOf('#') + 1)
                     switchToPhoto(parseInt(id));
                 });
-                var id = parseInt(window.location.hash.substr(1));
+                var id = window.location.hash.substr(1);
                 switchToPhoto(id);
             });
         </script>
