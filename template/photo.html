@@ -1,6 +1,6 @@
 ## -*- coding: utf-8 -*-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <title>我看图 &gt;&gt; ${album.name}</title>
@@ -22,24 +22,71 @@
             #nav ul { position: relative; }
             #nav li { display: inline; }
                 .highlightedThumb { padding: 0 4px; }
-            #desc { position: absolute; left: 0; top: 50%; padding-left: 10px; border-left: 5px solid #ccc; font-size: 16px; color: #fff; text-align: left; }
+            #desc { position: absolute; background: rgba(0,0,0,0.5); padding-left: 10px; border-left: 5px solid #ccc; font-size: 16px; color: #fff; text-align: left; }
             #loading { position: absolute; left: 50%; top: 50%; margin-left: -60px; margin-top: -40px; width: 120px; height: 80px; text-align: center; background: #fff; opacity: 0.8; filter: alpha(opacity=80); -moz-border-radius: 10px; border-radius: 10px; z-index: 50; display: none; }
                 #loading img { margin-top: 8px; }
         </style>
-        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+        <script type="text/javascript" src="/assets/jquery-1.9.1.min.js"></script>
         <script type="text/javascript">
             var ids = ${ids};
             var urls = ${urls};
+            //preloadStatus 数组代表对应的图片是否已被预读。1：已读；0：未读
+            var preloadStatus = new Array(urls.length);
+            for(var i = 0; i < urls.length; i++){
+                preloadStatus[i] = 0;
+            }
+            
             var photoInfo = ${info};
             var currentId;
+            function _debug(str){
+                if(window.console){
+                    console.debug(str);
+                }
+            }
+            
+            //从 index+1 开始预读
+            function preloadImg(index){
+                if($("body").data("shouldPreload") == true){
+                    var idx  = (index + 1) % urls.length;
+                    do{
+                        if(preloadStatus[idx] == 0){
+                            break;
+                        }else{
+                            idx = ++idx % urls.length;
+                        }
+                    }while(idx != index)
+                    
+                    if(idx == index){
+                        //已经全部预读取，退出
+                        $("body").data("allPreloaded", true);
+                    }else{
+                        var tmpImg = new Image();
+                        tmpImg.src = urls[idx]; 
+                        $(tmpImg).load(function(){
+                            preloadStatus[idx] = 1;
+                            //_debug("INDEX: " + idx + " LOADED");
+                            $("body").data("preloadCount", $("body").data("preloadCount") + 1);
+                            preloadImg(idx);
+                        });
+                    }
+                }
+            }
+            
             function switchToPhoto(id){
                 //id: integer
                 currentId = id;
                 $('#loading').show();
                 var index = jQuery.inArray(id, ids);
                 var url = urls[index];
+                
+                //打断正在预读的图片队列
+                $("body").data("shouldPreload", false);
                 $('#main_photo').attr('src', url);
+                
                 $('#main_photo').load(function(){
+                    if($("body").data("allPreloaded" == false)){
+                        preloadImg(index);
+                    }
                     var diff = $(document).height() - $(this).height();
                     if(diff > 0){
                         $(this).css('margin-top', diff / 2 + 'px');
@@ -62,8 +109,14 @@
             function updatePhotoInfo(id){
                 //photo.name, photo.desc, photo.time_created
                 var info = photoInfo[id + ''];
-                $('#main_photo').attr('alt', info['name'])
-                $('#desc').text(info['desc'] || '').css('width', $('#main_photo').offset().left - 10 + 'px');
+                $('#main_photo').attr('alt', info['name']);
+                $('#desc').text(info['desc'] || '');
+                var offset = $('#main_photo').offset();
+                $('#desc').css({
+                    'width': $('#main_photo').width() - 15 + 'px', //FIXME: hard-coding
+                    'left': offset.left + 'px',
+                    'bottom': ($(document).height() - offset.top - $('#main_photo').height()) + 'px'
+                });
                 $('#loading').hide();
                 $('li').removeClass('highlightedThumb');
                 $('#p_' + id).parent().parent().addClass('highlightedThumb');
@@ -102,6 +155,7 @@
                         $('#func_bar').show();
                         centerThumb(currentId);
                     });
+                    //第一次展现时才读取缩略图
                     $('li img').each(function(){
                         if($(this).attr('_src')){
                             $(this).attr('src', $(this).attr('_src'))
@@ -129,6 +183,8 @@
                 });
                 var id = window.location.hash.substr(1);
                 switchToPhoto(id);
+                $("body").data("shouldPreload", true);
+                $("body").data("allPreloaded", false);
             });
         </script>
     </head>
