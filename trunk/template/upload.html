@@ -148,7 +148,11 @@
     </head>
     
     <body>
-        <p><label for="album">哪个相册？</label><input type="text" name="album" id="album" /></p><br/><br/><br/><br/>
+        <p><label for="album">哪个相册？</label><input type="text" name="album" id="album" /></p>
+        %for album in aas:
+            <a href="javascript:$('#album').val('${album.name}');void(0);">${album.name}</a>&nbsp;
+        %endfor
+        <br/><br/>
         <!--input type="file" name="uploadify" id="uploadify" /-->
         <p><a href="/">回首页</a></p>
         <div>

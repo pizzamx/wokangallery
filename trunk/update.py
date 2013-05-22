@@ -46,7 +46,8 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
     def get(self):
         template = self.getTemplate('upload.html')
         url = blobstore.create_upload_url('/upload')
-        self.response.write(template.render_unicode(url=url))
+        allAlbums = Album.all()
+        self.response.write(template.render_unicode(url=url, aas=allAlbums))
         
     def post(self):
         upload_files = self.get_uploads('Filedata')
@@ -66,7 +67,7 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
         
         p = Photo(src='', name=name, blob=blob_info.key(), album=album)
         p.put()
-        self.response.set_status(200)
+        self.response.set_status(200)   
         self.response.write({"thumbUrl": p.genThumbURL(), "id": str(p.key().id())})
         #self.redirect('/_dummy/xxx' % blob_info.key())
 
@@ -77,21 +78,23 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
 
         name = self.request.get('Filename')
         abn = self.request.get('album')
-        albm = unicode(base64.b64decode(abn), 'utf-8')
+        abn = unicode(base64.b64decode(abn), 'utf-8')
         desc = self.request.get('desc')
         desc = unicode(base64.b64decode(desc), 'utf-8')
+        print desc
         
         gImg = images.Image(blob_info.key())
 
         album = Album.get_by_key_name('_' + abn)
         if not album:
-            album = Album(name=albm, cover=blob_info.key(), key_name='_' + abn)
+            album = Album(name=abn, cover=blob_info.key(), key_name='_' + abn)
             album.put()
         
         p = Photo(src='', name=name, blob=blob_info.key(), desc=desc, album=album)
         p.put()
         
-        self.redirect('/_dummy/%s' % blob_info.key())
+        self.response.set_status(200)   
+        self.response.write({"thumbUrl": p.genThumbURL(), "id": str(p.key().id())})
 
 class EditDesc(webapp2.RequestHandler):
     @adminOP
