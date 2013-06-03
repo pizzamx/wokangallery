@@ -21,7 +21,7 @@
 import webapp2
 
 from google.appengine.ext import db, blobstore
-from google.appengine.api import users, images
+from google.appengine.api import users, images, memcache
 from google.appengine.ext.webapp import blobstore_handlers
 
 from mako.template import Template
@@ -30,6 +30,7 @@ from mako.lookup import TemplateLookup
 import simplejson
 
 from model import Photo, Album, Thumbnail
+from util import memcached
 
 import os, logging, urllib2, math, calendar, re, string, base64
 
@@ -146,24 +147,35 @@ class GeneratePhotoURL(webapp2.RequestHandler):
         self.response.write(key)
 
 class DispPhoto(QueryBase):
+    def getData(self):
+        cachedData = memcache.get(str(self.album.key()))
+        if cachedData is not None:
+            return cachedData
+
+        ids = []
+        urls = []
+        dimensions = []
+        info = {}
+        for p in self.album.photo_set.order('name'):
+            ids.append(str(p.key().id()))
+            urls.append(p.genURL())
+            dimensions.append([int(p.width), int(p.height)])
+            info[str(p.key().id())] = {
+                'name': str(p.name),
+                'desc': p.desc,
+                'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
+            }
+        memcache.add(str(self.album.key()), (ids, urls, dimensions, info))
+        return (ids, urls, dimensions, info)
+
     def get(self, an):
-        album = Album.get_by_key_name('_' + urllib2.unquote(an).decode('utf-8'))
+        self.album = Album.get_by_key_name('_' + urllib2.unquote(an).decode('utf-8'))
         #album = Album.get_by_key_name('_' + base64.b64encode(urllib2.unquote(an).decode('utf-8')))
         #p = Photo.get_by_id(long(id))
-        if album:
-            ids = []
-            urls = []
-            info = {}
-            for p in album.photo_set:
-                ids.append(str(p.key().id()))
-                urls.append(p.genURL())
-                info[str(p.key().id())] = {
-                    'name': str(p.name),
-                    'desc': p.desc,
-                    'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
-                }
+        if self.album:
             template = self.getTemplate('photo.html')
-            self.response.write(template.render_unicode(album=album, ids=ids, urls=urls, info=simplejson.dumps(info), isAdmin=users.is_current_user_admin()))
+            ids, urls, dimensions, info = self.getData()
+            self.response.write(template.render_unicode(album=self.album, ids=ids, urls=urls, dimensions=dimensions, info=simplejson.dumps(info), isAdmin=users.is_current_user_admin()))
             
 class Dummy(webapp2.RequestHandler):
     def get(self, anything):

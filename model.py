@@ -37,19 +37,22 @@ class Album(db.Model):
     cr_time  = db.DateTimeProperty(auto_now_add=True)
     
     def genURL(self):
-        return images.get_serving_url(str(self.cover.key()), size=144, crop=True)
+        return images.get_serving_url(str(self.cover.key()), size=196, crop=True)
 
 class Photo(db.Model):
     src     = db.StringProperty()                     #保留字段，来自网络的图片才赋值
     name    = db.StringProperty()                     #文件名
-    desc    = db.StringProperty()                      #标题
+    desc    = db.StringProperty(multiline=True)       #标题
     blob    = blobstore.BlobReferenceProperty()     
+    width   = db.IntegerProperty()
+    height  = db.IntegerProperty()
     #thumb   = db.ReferenceProperty(Thumbnail)         #缩略图
     cr_time = db.DateTimeProperty(auto_now_add=True)  #创建时间
+    captureDatetime = db.DateTimeProperty()           #拍摄时间
     album   = db.ReferenceProperty(Album)             #所属相册
     
-    def genThumbURL(self):
-        return images.get_serving_url(str(self.blob.key()), size=104, crop=True)
+    def genThumbURL(self, size=196):
+        return images.get_serving_url(str(self.blob.key()), size=int(size), crop=True)
 
     def genURL(self):
-        return images.get_serving_url(str(self.blob.key()), size=912)
+        return images.get_serving_url(str(self.blob.key()), size=0)
