@@ -18,10 +18,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-import webapp2
+import webapp2, logging, re
 
 from google.appengine.ext import webapp, db, blobstore
-from google.appengine.api import users, images
+from google.appengine.api import users, images, memcache
 from google.appengine.ext.webapp import blobstore_handlers
 
 from mako.template import Template
@@ -55,6 +55,8 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
 
         name = self.request.get('Filename')
         folder = self.request.get('folder')
+        width = self.request.get('width')
+        height = self.request.get('height')
         folder = urllib.unquote(folder.encode('utf-8')).decode("utf-8")
         abn = folder[folder.rfind('/') + 1:]
         
@@ -65,7 +67,7 @@ class Upload(blobstore_handlers.BlobstoreUploadHandler, UpdateBase):
             album = Album(name=abn, cover=blob_info.key(), key_name='_' + abn)
             album.put()
         
-        p = Photo(src='', name=name, blob=blob_info.key(), album=album)
+        p = Photo(src='', name=name, blob=blob_info.key(), album=album, width=int(width), height=int(height))
         p.put()
         self.response.set_status(200)   
         self.response.write({"thumbUrl": p.genThumbURL(), "id": str(p.key().id())})
@@ -80,8 +82,34 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
         abn = self.request.get('album')
         abn = unicode(base64.b64decode(abn), 'utf-8')
         desc = self.request.get('desc')
+        width = self.request.get('width')
+        height = self.request.get('height')
+        captureDatetime = datetime.strptime(self.request.get('datetime'), '%Y-%m-%dT%H:%M:%S.%f')
+        
+        #logging.info(self.request)
+        
+        """
+        好像是 Lightroom 的问题。如果 LrHttp.postMultipart 里面 content 的某个字段超过
+        255 字节，他就会把它 multipart，比如：（为了方便阅读换行了，实际上是一行）
+        
+        5qiq5ruo77yM5qiq5ruo5piv5Liq5aSn5riv5Y+j77yM5omA5Lul5a+55aSW6LS45piT5b6I5aS
+        a77yM5pyJ5b6I5aSa6KW/5rSL5bu6562R44CC5Zu95YaF6L+Z56eN5pmv54K55Lmf5aSa77yM5L
+        iN6L+H6Lef5pel5pys5q+U6LW35p2l5pW05L2T5bCx5beu5aSa5LqG77yM5Lq65a625pW055qE5
+        aSq5bmy5YeA5LqG44CC5Zyw5LiK5piv5qix6Iqx77yMM+aciDMw5Y+355qE5pe25YCZ5YWz5Lic
+        55qE5qix6Iqx5bey57uP5byA5aeL6JC95LqG77yM5b6I576O        
+        
+        变成了：
+        
+        5qiq5ruo77yM5qiq5ruo5piv5Liq5aSn5riv5Y+j77yM5omA5Lul5a+55aSW6LS45piT5b6I5aS=
+        a77yM5pyJ5b6I5aSa6KW/5rSL5bu6562R44CC5Zu95YaF6L+Z56eN5pmv54K55Lmf5aSa77yM5L=
+        iN6L+H6Lef5pel5pys5q+U6LW35p2l5pW05L2T5bCx5beu5aSa5LqG77yM5Lq65a625pW055qE5=
+        aSq5bmy5YeA5LqG44CC5Zyw5LiK5piv5qix6Iqx77yMM+aciDMw5Y+355qE5pe25YCZ5YWz5Lic=
+        55qE5qix6Iqx5bey57uP5byA5aeL6JC95LqG77yM5b6I576O
+        
+        所以把 =\r 全部去掉（换行是试出来的）
+        """
+        desc = re.sub(r'(=\r)', '', desc)
         desc = unicode(base64.b64decode(desc), 'utf-8')
-        print desc
         
         gImg = images.Image(blob_info.key())
 
@@ -89,8 +117,10 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
         if not album:
             album = Album(name=abn, cover=blob_info.key(), key_name='_' + abn)
             album.put()
+        else:
+            memcache.delete(str(album.key()))
         
-        p = Photo(src='', name=name, blob=blob_info.key(), desc=desc, album=album)
+        p = Photo(src='', name=name, blob=blob_info.key(), desc=desc, album=album, width=int(width), height=int(height), captureDatetime=captureDatetime)
         p.put()
         
         self.response.set_status(200)   

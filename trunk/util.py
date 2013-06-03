@@ -20,6 +20,7 @@
 # THE SOFTWARE.
 
 from google.appengine.api import users
+from google.appengine.api import memcache
 
 def adminOP(func):
     def wrapper(self, *args, **kw):
@@ -31,3 +32,23 @@ def adminOP(func):
         else:
             func(self, *args, **kw)
     return wrapper
+    
+def memcached(t):
+    "decorate cachable calls"
+    def w(func):
+        def wrapper(self, *args):
+            #so func_name should be unique
+            cachedData = memcache.get(func.func_name)
+            if cachedData is not None:
+                #logging.debug('%s hit', func.func_name)
+                return cachedData
+            
+            #logging.debug('%s missed', func.func_name)
+            cachedData = func(self, *args)
+            if t == -1:
+                memcache.add(func.func_name, cachedData)
+            else:
+                memcache.add(func.func_name, cachedData, t)
+            return cachedData
+        return wrapper
+    return w

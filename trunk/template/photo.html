@@ -9,19 +9,17 @@
             body { background: #333;  }
             #wrapper { text-align: center; position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
             #main_photo { margin: 0 auto; }
-            #index_tip { position: absolute; left: 0; top: 0; color: #ddd; font: bold 20px Georgia, 'Palatino Linotype', serif; }
+            #index_tip { position: absolute; left: 0; top: 0; color: #ddd; font: bold 20px Georgia, 'Palatino Linotype', serif; z-index: 100; }
                 #num_of_photos { font-size: 30px;  }
-            #nav, #hint { width: 50px; height: 50px; position: fixed; left: 0; bottom: 0; text-align: left; }
-            .trans_back { background: #fff; opacity: 0.3; filter: alpha(opacity=30); z-index: 5; height: 100%; }
-            #active_thumb_back { position: absolute; z-index: 10; width: 108px; height: 108px; background: #000; display: none; }
+            #func_bar, #toolbar { position: absolute; left: 0; }
+            #func_bar { position: absolute; left: 0; bottom: 0; width: 100%; overflow: hidden; }
             #toolbar { height: 100%; width: 100px; top: 0; }
                 #toolbar a { display: block; padding: 5px 0; font-size: 30px; color: #fff; }
-            #func_bar, #toolbar { position: absolute; left: 0; }
-            #func_bar { top: 8px; width: 100%; padding-left: 100px; display: none; }
-            #thumb_container { overflow: hidden; position: relative; }
-            #nav ul { position: relative; }
-            #nav li { display: inline; }
-                .highlightedThumb { padding: 0 4px; }
+            #thumb_container { overflow: hidden; position: relative; left: 100px; }
+            #func_bar ul { position: relative; }
+            #func_bar li { display: inline; }
+                /*.highlightedThumb { padding: 0 4px; }*/
+                .highlightedThumb { border: 3px solid #fff; }
             #desc { position: absolute; background: rgba(0,0,0,0.5); padding-left: 10px; border-left: 5px solid #ccc; font-size: 16px; color: #fff; text-align: left; }
             #loading { position: absolute; left: 50%; top: 50%; margin-left: -60px; margin-top: -40px; width: 120px; height: 80px; text-align: center; background: #fff; opacity: 0.8; filter: alpha(opacity=80); -moz-border-radius: 10px; border-radius: 10px; z-index: 50; display: none; }
                 #loading img { margin-top: 8px; }
@@ -32,20 +30,27 @@
             var urls = ${urls};
             //preloadStatus 数组代表对应的图片是否已被预读。1：已读；0：未读
             var preloadStatus = new Array(urls.length);
+            //oriDimension 数组记录照片的原始长宽
+            var oriDimension = ${dimensions};
+            //一次预读张数，默认是 5
+            var BATCH_LOAD_LIMIT = 5;
             for(var i = 0; i < urls.length; i++){
                 preloadStatus[i] = 0;
             }
             
             var photoInfo = ${info};
             var currentId;
+            
+            var DEBUG_SWITCH = true;
             function _debug(str){
-                if(window.console){
-                    console.debug(str);
+                if(window.console && DEBUG_SWITCH){
+                    console.info(str);
                 }
             }
             
             //从 index+1 开始预读
-            function preloadImg(index){
+            function preloadImg(index, count){
+                //_debug('Enter preload: ' + index + ', ' + count + ', ' + $("body").data("shouldPreload"));
                 if($("body").data("shouldPreload") == true){
                     var idx  = (index + 1) % urls.length;
                     do{
@@ -53,46 +58,60 @@
                             break;
                         }else{
                             idx = ++idx % urls.length;
+                            count--;
                         }
-                    }while(idx != index)
+                    }while(idx != index || count == 0)
                     
                     if(idx == index){
                         //已经全部预读取，退出
                         $("body").data("allPreloaded", true);
-                    }else{
+                    }else if(count > 0){
+                        _debug('Preloading(' + (BATCH_LOAD_LIMIT - count + 1) + '): ' + idx);
                         var tmpImg = new Image();
                         tmpImg.src = urls[idx]; 
                         $(tmpImg).load(function(){
                             preloadStatus[idx] = 1;
+                            /*
+                            var _w = $(this).width(), _h = $(this).height();
+                            if(!oriDimension[idx]){
+                                oriDimension[idx] = [_w, _h];
+                            }
+                            _debug(oriDimension);
+                            */
                             //_debug("INDEX: " + idx + " LOADED");
                             $("body").data("preloadCount", $("body").data("preloadCount") + 1);
-                            preloadImg(idx);
+                            preloadImg(idx, count - 1);
                         });
                     }
                 }
             }
             
-            function switchToPhoto(id){
-                //id: integer
-                currentId = id;
+            function switchToPhoto(index){
+                _debug('Switch to: ' + index);
+                currentId = ids[index];
                 $('#loading').show();
-                var index = jQuery.inArray(id, ids);
                 var url = urls[index];
                 
                 //打断正在预读的图片队列
                 $("body").data("shouldPreload", false);
+                //$('#main_photo').width('').height('');
                 $('#main_photo').attr('src', url);
-                
-                $('#main_photo').load(function(){
+                $('#main_photo').load(function(index){
+                    _debug('Loaded: ' + index);
                     if($("body").data("allPreloaded" == false)){
-                        preloadImg(index);
+                    $("body").data("shouldPreload", true);
+                        preloadImg(index, BATCH_LOAD_LIMIT);
                     }
-                    var diff = $(document).height() - $(this).height();
-                    if(diff > 0){
-                        $(this).css('margin-top', diff / 2 + 'px');
-                    }
-                    updatePhotoInfo(currentId);
                     $('#current_index').text(index + 1);
+                    /*
+                    var _w = $(img).width(), _h = $(img).height();
+                    if(!oriDimension[index]){
+                        oriDimension[index] = [_w, _h];
+                    }
+                    _debug(oriDimension);
+                    */
+                    updatePhotoInfo(currentId);
+                    reposition();
                         /*
                     if(id + '' in photoInfo){
                         updatePhotoInfo(id);
@@ -103,7 +122,40 @@
                         }, "json");
                     }
                         */
-                });
+                }(index));
+            }
+            
+            function reposition(){
+                var index = $.inArray(currentId, ids);
+                var imgObj = $('#main_photo');
+                var _w = oriDimension[index][0], _h = oriDimension[index][1];
+                var _ww = $(window).width(), _wh = $(window).height();
+                var ratio, _tw, _th;
+                if(_w > _h && _w > _ww){
+                    ratio = _h / _w;
+                    //_tw = _ww - $('#index_tip').width() - 20;
+                    _tw = _ww;
+                    _th = _tw * ratio;
+                    imgObj.width(_tw).height(_th).css('margin-top', (_wh - _th) / 2 + 'px');
+                    $('#desc').css({
+                        'width': _tw - 15 + 'px', //FIXME: hard-coding. leftpadding: 10, leftborder:5
+                        'left': (_ww - _tw) / 2 + 'px',
+                        'bottom': (_wh - _th)/ 2 + 'px'
+                    });
+                }else if(_h > _w && _h > _wh){
+                    ratio = _w / _h;
+                    //_th = _wh - $('#index_tip').width() - 20;
+                    _th = _wh;
+                    _tw = _th * ratio;
+                    imgObj.height(_th).width(_tw).css('margin-top', (_wh - _th) / 2 + 'px');
+                    $('#desc').css({
+                        'width': _th * ratio - 15 + 'px', //FIXME: hard-coding. leftpadding: 10, leftborder:5
+                        'left': (_ww - _tw) / 2 + 'px',
+                        'bottom': (_wh - _th) / 2 + 'px'
+                    });
+                }
+                _debug('Window    : ' + _ww + ', ' + _wh);
+                _debug('Resized to: ' + _tw + ', ' + _th);
             }
             
             function updatePhotoInfo(id){
@@ -111,47 +163,45 @@
                 var info = photoInfo[id + ''];
                 $('#main_photo').attr('alt', info['name']);
                 $('#desc').text(info['desc'] || '');
-                var offset = $('#main_photo').offset();
-                $('#desc').css({
-                    'width': $('#main_photo').width() - 15 + 'px', //FIXME: hard-coding
-                    'left': offset.left + 'px',
-                    'bottom': ($(document).height() - offset.top - $('#main_photo').height()) + 'px'
-                });
                 $('#loading').hide();
-                $('li').removeClass('highlightedThumb');
-                $('#p_' + id).parent().parent().addClass('highlightedThumb');
+                $('li img').removeClass('highlightedThumb');
+                $('#p_' + id).addClass('highlightedThumb');
                 centerThumb(id);
                 window.location.hash = id;
             }
             
             function centerThumb(id){
-                var left = ($('#nav').width() - 208) / 2 - $('#p_' + id).parent().parent().position().left;
-                $('#nav ul').animate({'left': left + 'px'}, 300);
+                var left = ($('#func_bar').width() - 208) / 2 - $('#p_' + id).position().left;
+                $('#func_bar ul').css('left', left + 'px');
             }
             
-            $(document).keydown(function(e){
+            $(window).keydown(function(e){
                 if(currentId){
                     if(e.which == 34 || e.which == 37){ //左或向下翻页
-                        var index = jQuery.inArray(currentId, ids) - 1;
+                        var index = $.inArray(currentId, ids) - 1;
                         if(index == -1){
                             index = ids.length - 1;
                         }
-                        switchToPhoto(ids[index]);
+                        switchToPhoto(index);
                     }else if(e.which == 33 || e.which == 39){   //右或向上翻页
-                        var index = jQuery.inArray(currentId, ids) + 1;
-                        if(index == ids.length){
-                            index = 0;
-                        }
-                        switchToPhoto(ids[index]);
+                        var index = ($.inArray(currentId, ids) + 1) % ids.length;
+                        switchToPhoto(index);
                     }
                 }
             });
+            
             $(document).ready(function() {
                 $('ul').css('width', ids.length * 110 + 10 + 'px');
                 $('#num_of_photos').text(ids.length);
+                    $('li img').each(function(){
+                        if($(this).attr('_src')){
+                            $(this).attr('src', $(this).attr('_src'))
+                            $(this).removeAttr('_src');
+                        }
+                    });
+                    /*
                 $('#nav').mouseenter(function(e){
-                    $('#hint').hide();
-                    $('#nav').animate({'height': '120px', 'width': '100%'}, 100, function(){
+                    $('#nav').css('background-image', 'none').animate({'height': '120px', 'width': '100%'}, 100, function(){
                         $('#func_bar').show();
                         centerThumb(currentId);
                     });
@@ -165,9 +215,9 @@
                 }).mouseleave(function(){
                     $('#nav').animate({'height': '50px', 'width': '50px'}, 100, function(){
                         $('#func_bar').hide();
-                        $('#hint').show();
+                        $('#nav').css('background-image', '/assets/sign.png');
                     });
-                });
+                });*/
                 /*
                 $('#nav').mouseenter(function(){
                     if($('ul').is(":visible")){
@@ -175,45 +225,45 @@
                     }
                 });
                 */
-            	$('#nav li a').click(function(e){
+            	$('#func_bar li a').click(function(e){
                     e.preventDefault();
                     e.stopPropagation();
                     var id = this.href.substr(this.href.indexOf('#') + 1)
-                    switchToPhoto(parseInt(id));
+                    _debug('thumb clicked: ' + id);
+                    switchToPhoto($.inArray(id, ids));
                 });
                 var id = window.location.hash.substr(1);
-                switchToPhoto(id);
+                switchToPhoto($.inArray(id, ids));
                 $("body").data("shouldPreload", true);
                 $("body").data("allPreloaded", false);
+                
+                $(window).resize(function(){
+                    reposition();
+                });
             });
         </script>
     </head>
     <body>
         <div id="loading"><img src="/assets/loading.gif" alt="Loading..." /></div>
         <div id="index_tip"><span id="current_index"></span>/<span id="num_of_photos"></span></div>
-        <div id="active_thumb_back"></div>
         <div id="wrapper">
             <div id="desc"></div>
             <img id="main_photo" src="" alt="" />
-            <div id="hint"><img src="/assets/sign.gif" alt="鼠标移过来嘛" /></div>
-            <div id="nav">
-                <div class="trans_back"></div>
                 <div id="func_bar">
                     <div id="toolbar">
                         <a href="/album/${album.name}">回相册</a>
-                        <a href="/">回首页</a></p>
+                        <a href="/">回首页</a>
                     </div>
                     <div id="thumb_container">
                         <ul>
-                        %for sib in album.photo_set:
+                        %for sib in album.photo_set.order('name'):
                             <li><a href="/photo/${album.name}#${sib.key().id()}">
-                                <img id="p_${sib.key().id()}" _src="${sib.genThumbURL()}" alt="${sib.name}" />
+                                <img id="p_${sib.key().id()}" _src="${sib.genThumbURL(104)}" alt="${sib.name}" />
                             </a></li>
                         %endfor
                         </ul>
                     </div>
                 </div>
-            </div>
         </div>
     </body>
 </html>

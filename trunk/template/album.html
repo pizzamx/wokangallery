@@ -6,9 +6,8 @@
         <title>我看图 &gt;&gt; ${album.name} </title>
         <link href="/assets/default.css" rel="stylesheet" type="text/css" />
         <style type="text/css">
-            #album_list li { float: left; margin-left: 15px; line-height: normal; position: relative; height: 136px; }
-                #album_list li p { line-height:normal; position:relative; overflow: hidden; width:104px; height: 14px; top: -14px; color: #ddd; z-index: 10; }
-                #album_list .transbar { position:absolute; top: 90px; left: 0; width:104px; height: 14px; background: #000; opacity: 0.5; filter: alpha(opacity=50); z-index: 5; }
+            #album_list li { float: left; margin: 0 0 10px 15px; line-height: normal; position: relative; }
+                #album_list li p { line-height:normal; position:absolute; overflow: hidden; width:100%; height: 18px; bottom: 0; color: #ddd; z-index: 10; background: rgba(0,0,0,0.5); font-size: 14px; }
             #album_list img { vertical-align: middle; }
             #album_nav { height: 100px; }
             #album_name { position: absolute; left: 0; top: 0; z-index: -1; color: #ddd; font: 120px "Microsoft YaHei", "黑体"; }
@@ -19,13 +18,13 @@
         <script type="text/javascript">
         $(document).ready(function() {
         	$("#album_list li").mouseenter(function(){
-                $(this).children('p').css({'overflow': 'visible', 'background': '#000', 'height': 'auto'});
+                $(this).find('p').css({'overflow': 'visible', 'height': 'auto'});
         	}).mouseleave(function(){
-                $(this).children('p').css({'overflow': 'hidden', 'background': 'none', 'height': '14px'});
+                $(this).find('p').css({'overflow': 'hidden', 'height': '18px'});
             });
             $("#album_list li p").each(function(){
                 if($(this).text() == ''){
-                    $(this).prev().hide();
+                    $(this).hide();
                 }
             });
         });
@@ -37,10 +36,13 @@
         <div id="album_homelink"><a href="/">&lt;&lt;相册列表</a></div>
         <div id="album_list">
             <ul>
-            %for p in album.photo_set.order('__key__'):
-                <li><a href="/photo/${album.name}#${p.key().id()}"><img src="${p.genThumbURL()}" alt="${p.name}" /></a>
-                <div class="transbar"></div>
-                <p>${p.desc or ""}</p></li>
+            %for p in album.photo_set.order('name'):
+                <li>
+                	<a href="/photo/${album.name}#${p.key().id()}">
+                		<img src="${p.genThumbURL()}" alt="${p.name}" />
+		                <p>${p.desc or ""}</p>
+                	</a>
+                </li>
             %endfor
             </ul>
         </div>
