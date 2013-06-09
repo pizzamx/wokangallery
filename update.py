@@ -84,7 +84,15 @@ class APIUpload(blobstore_handlers.BlobstoreUploadHandler):
         desc = self.request.get('desc')
         width = self.request.get('width')
         height = self.request.get('height')
-        captureDatetime = datetime.strptime(self.request.get('datetime'), '%Y-%m-%dT%H:%M:%S.%f')
+        
+        dtstr = self.request.get('datetime')
+        if dtstr.find('+') != -1:
+            dtstr = dtstr[:dtstr.find('+')]
+        try:
+            dt = datetime.strptime(dtstr, '%Y-%m-%dT%H:%M:%S.%f')
+        except ValueError:
+            dt = datetime.strptime(dtstr, '%Y-%m-%dT%H:%M:%S')
+        captureDatetime = dt
         
         #logging.info(self.request)
         

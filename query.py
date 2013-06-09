@@ -78,7 +78,7 @@ class QueryBase(webapp2.RequestHandler):
 
 class Index(QueryBase):
     def get(self):
-        allAlbums = Album.all()
+        allAlbums = Album.all().order('name')
         template = self.getTemplate('index.html')
         self.response.write(template.render_unicode(aas=allAlbums, isAdmin=users.is_current_user_admin()))
         
@@ -163,7 +163,7 @@ class DispPhoto(QueryBase):
             info[str(p.key().id())] = {
                 'name': str(p.name),
                 'desc': p.desc,
-                'crTime': p.cr_time.strftime('%Y%m%d %H:%M:%S')
+                'capTime': p.captureDatetime.strftime('%m/%d/%Y %H:%M')
             }
         memcache.add(str(self.album.key()), (ids, urls, dimensions, info))
         return (ids, urls, dimensions, info)
